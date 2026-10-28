@@ -1,0 +1,23 @@
+# Dependências e caches
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Credenciais e tokens locais
+.clasprc.json
+scratch/github_token*
+scratch/gas_versions/
+scratch/*.raw
+scratch/*.txt
+
+# Diretórios temporários de scratch e logs
+scratch/
+*.log
+
+# Arquivos do sistema operacional
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
