@@ -17,9 +17,7 @@ const PATRIMONIO_SPREADSHEET_ID = '1tRhBfK38m58vzoFmoxv8QWxjG6CYN66u7ozsE3RuI8Q'
  * Serves the Executive HTML Dashboard on HTTP GET.
  */
 function doGet(e) {
-  const template = HtmlService.createTemplateFromFile('Index');
-  return template
-    .evaluate()
+  return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('TSA Cargo | Portal Executivo — Compras, Manutenção & Patrimônio Frota')
     .setFaviconUrl('https://cdn-icons-png.flaticon.com/512/2830/2830305.png')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1')

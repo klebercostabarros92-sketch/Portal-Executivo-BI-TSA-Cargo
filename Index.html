@@ -2235,7 +2235,7 @@
                 <th>MTBF (Entre Paradas)</th>
                 <th style="text-align:right;">Oficina Pura (Ex-CAPEX)</th>
                 <th style="text-align:right;">Valor FIPE</th>
-                <th>��ndice TCO (Oficina ÷ FIPE)</th>
+                <th>Índice TCO (Oficina ÷ FIPE)</th>
                 <th>Alertas SOS/Urg</th>
                 <th>Último Resumo de Serviço</th>
               </tr>
@@ -2543,7 +2543,7 @@
       <div class="filter-header">
         <div class="filter-title">
           <i data-lucide="sliders-horizontal" style="width:15px;height:15px;color:var(--tsa-green);"></i>
-          <span>Filtros Inteligentes — Patrimônio Frota TSA</span>
+          <span>Filtros Inteligentes — Patrim��nio Frota TSA</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <span id="patFipeRefBadge" class="pill pill-green" style="font-size:0.72rem;">Tabela FIPE Vigente + Depreciação Empilhadeiras</span>
@@ -3053,7 +3053,7 @@
               <div>
                 <div class="chart-title">
                   <i data-lucide="calendar-range" style="width:18px;height:18px;color:var(--blue);"></i>
-                  Cronograma de Desalienação (Término de Vigência dos Contratos)
+                  Cronograma de Desalienação (T��rmino de Vigência dos Contratos)
                 </div>
                 <div class="chart-subtitle">Valor patrimonial que ficará Quitado/Livre a cada ano de vencimento de contrato</div>
               </div>
@@ -4510,7 +4510,7 @@
       const prevRecs = pureWorkshopRecs.filter(r => r.analitica.toUpperCase().includes('PREVENTIVA'));
       const prevSum = prevRecs.reduce((s, r) => s + r.valor, 0);
 
-      const corrRecs = pureWorkshopRecs.filter(r => r.analitica === 'PEÇAS E ACESSÓRIOS PARA VEÍCULOS' || r.analitica === 'Serviços em Veiculos');
+      const corrRecs = pureWorkshopRecs.filter(r => r.analitica === 'PEÇAS E ACESSÓRIOS PARA VE��CULOS' || r.analitica === 'Serviços em Veiculos');
       const corrSum = corrRecs.reduce((s, r) => s + r.valor, 0);
 
       const tireRecs = pureWorkshopRecs.filter(r => r.analitica.toUpperCase().includes('PNEU') || r.analitica.toUpperCase().includes('BORRACHARIA'));
@@ -5314,7 +5314,7 @@
             .getPatrimonioSheetData();
           return;
         }
-        const patUrl = 'https://docs.google.com/spreadsheets/d/1tRhBfK38m58vzoFmoxv8QWxjG6CYN66u7ozsE3RuI8Q/export?format=csv&t=' + Date.now();
+        const patUrl = 'https:\x2f\x2fdocs.google.com/spreadsheets/d/1tRhBfK38m58vzoFmoxv8QWxjG6CYN66u7ozsE3RuI8Q/export?format=csv&t=' + Date.now();
         fetch(patUrl)
           .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
           .then(csvText => {
@@ -5361,7 +5361,7 @@
       }
 
       // 2. Standalone HTML / Local Preview -> Fetch live CSV directly from Google Sheets export endpoint
-      const sheetUrl = 'https://docs.google.com/spreadsheets/d/153AuVXowt0wV1PArUpfHeFDJ2O_5Dy_PSwBl_k98nnw/export?format=csv&t=' + Date.now();
+      const sheetUrl = 'https:\x2f\x2fdocs.google.com/spreadsheets/d/153AuVXowt0wV1PArUpfHeFDJ2O_5Dy_PSwBl_k98nnw/export?format=csv&t=' + Date.now();
       fetch(sheetUrl)
         .then(r => {
           if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -5744,16 +5744,17 @@
     }
 
     function switchPortalModule(mod) {
-      activePortalModule = mod;
-      const wCompras = document.getElementById('module-compras-wrapper');
-      const wPat = document.getElementById('module-patrimonio-wrapper');
-      const btnC = document.getElementById('modBtnCompras');
-      const btnP = document.getElementById('modBtnPatrimonio');
-      const btnMaint = document.getElementById('btnMaintFocus');
-      const btnHeaderFipe = document.getElementById('btnHeaderUpdateFipe');
-      const btnSheetExt = document.getElementById('btnSheetExternal');
-      const sheetBadge = document.getElementById('sheetNameBadge');
-      const ctxInfo = document.getElementById('moduleContextInfo');
+      try {
+        activePortalModule = mod;
+        const wCompras = document.getElementById('module-compras-wrapper');
+        const wPat = document.getElementById('module-patrimonio-wrapper');
+        const btnC = document.getElementById('modBtnCompras');
+        const btnP = document.getElementById('modBtnPatrimonio');
+        const btnMaint = document.getElementById('btnMaintFocus');
+        const btnHeaderFipe = document.getElementById('btnHeaderUpdateFipe');
+        const btnSheetExt = document.getElementById('btnSheetExternal');
+        const sheetBadge = document.getElementById('sheetNameBadge');
+        const ctxInfo = document.getElementById('moduleContextInfo');
 
       if (mod === 'patrimonio') {
         wCompras.style.display = 'none';
@@ -5762,7 +5763,7 @@
         btnP.classList.add('active');
         btnMaint.style.display = 'none';
         if (btnHeaderFipe) btnHeaderFipe.style.display = 'inline-flex';
-        if (btnSheetExt) btnSheetExt.href = 'https://docs.google.com/spreadsheets/d/1tRhBfK38m58vzoFmoxv8QWxjG6CYN66u7ozsE3RuI8Q/edit';
+        if (btnSheetExt) btnSheetExt.href = 'https:\x2f\x2fdocs.google.com/spreadsheets/d/1tRhBfK38m58vzoFmoxv8QWxjG6CYN66u7ozsE3RuI8Q/edit';
         if (!document.querySelector('#module-patrimonio-wrapper .tab-pane.active')) {
           const defPane = document.getElementById('pat-tab-overview');
           const defBtn = document.querySelector('#module-patrimonio-wrapper .nav-tab');
@@ -5779,7 +5780,7 @@
         btnC.classList.add('active');
         btnMaint.style.display = 'inline-flex';
         if (btnHeaderFipe) btnHeaderFipe.style.display = 'none';
-        if (btnSheetExt) btnSheetExt.href = 'https://docs.google.com/spreadsheets/d/153AuVXowt0wV1PArUpfHeFDJ2O_5Dy_PSwBl_k98nnw/edit';
+        if (btnSheetExt) btnSheetExt.href = 'https:\x2f\x2fdocs.google.com/spreadsheets/d/153AuVXowt0wV1PArUpfHeFDJ2O_5Dy_PSwBl_k98nnw/edit';
         if (!document.querySelector('#module-compras-wrapper .tab-pane.active')) {
           const defPaneC = document.getElementById('tab-exec');
           const defBtnC = document.querySelector('#module-compras-wrapper .nav-tab');
@@ -5792,6 +5793,9 @@
       }
       lucide.createIcons();
       window.dispatchEvent(new Event('resize'));
+      } catch (err) {
+        console.error('Erro em switchPortalModule:', err);
+      }
     }
 
     function switchPatTab(tabId, btnEl) {
@@ -6918,7 +6922,7 @@
 
     async function clientGetReference() {
       try {
-        const refs = await clientJsonGet('https://fipe.parallelum.com.br/api/v2/references');
+        const refs = await clientJsonGet('https:\x2f\x2ffipe.parallelum.com.br/api/v2/references');
         if (Array.isArray(refs) && refs.length > 0) {
           return { ok: true, codigoTabela: parseInt(refs[0].code, 10) || 338, mesReferencia: String(refs[0].month || '').trim() };
         }
@@ -6945,7 +6949,7 @@
         const tv = tryTypes[tIdx];
         const vPath = tv === 3 ? 'trucks' : 'cars';
         if (!fipeClientCache.marcas[tv]) {
-          const bData = await clientJsonGet('https://fipe.parallelum.com.br/api/v2/' + vPath + '/brands');
+          const bData = await clientJsonGet('https:\x2f\x2ffipe.parallelum.com.br/api/v2/' + vPath + '/brands');
           fipeClientCache.marcas[tv] = Array.isArray(bData) ? bData : [];
         }
         const targets = getFipeBrandTargetsClient(marca, modelo, tv);
@@ -6963,7 +6967,7 @@
           const bObj = brands[bIdx];
           const mKey = tv + ':' + bObj.code;
           if (!fipeClientCache.modelos[mKey]) {
-            const mData = await clientJsonGet('https://fipe.parallelum.com.br/api/v2/' + vPath + '/brands/' + bObj.code + '/models');
+            const mData = await clientJsonGet('https:\x2f\x2ffipe.parallelum.com.br/api/v2/' + vPath + '/brands/' + bObj.code + '/models');
             fipeClientCache.modelos[mKey] = Array.isArray(mData) ? mData : [];
           }
           fipeClientCache.modelos[mKey].forEach(mObj => {
@@ -6985,7 +6989,7 @@
         const yKey = cand.tv + ':' + cand.brandCode + ':' + cand.modelCode;
         if (!fipeClientCache.anos[yKey]) {
           try {
-            const yData = await clientJsonGet('https://fipe.parallelum.com.br/api/v2/' + cand.vPath + '/brands/' + cand.brandCode + '/models/' + cand.modelCode + '/years');
+            const yData = await clientJsonGet('https:\x2f\x2ffipe.parallelum.com.br/api/v2/' + cand.vPath + '/brands/' + cand.brandCode + '/models/' + cand.modelCode + '/years');
             fipeClientCache.anos[yKey] = Array.isArray(yData) ? yData : [];
           } catch (e) {
             fipeClientCache.anos[yKey] = [];
@@ -7017,7 +7021,7 @@
         const valKey = yKey + ':' + chosen.code;
         if (!fipeClientCache.valores[valKey]) {
           try {
-            fipeClientCache.valores[valKey] = await clientJsonGet('https://fipe.parallelum.com.br/api/v2/' + cand.vPath + '/brands/' + cand.brandCode + '/models/' + cand.modelCode + '/years/' + chosen.code);
+            fipeClientCache.valores[valKey] = await clientJsonGet('https:\x2f\x2ffipe.parallelum.com.br/api/v2/' + cand.vPath + '/brands/' + cand.brandCode + '/models/' + cand.modelCode + '/years/' + chosen.code);
           } catch (e) {
             fipeClientCache.valores[valKey] = null;
           }
@@ -7305,18 +7309,8 @@
       lucide.createIcons();
       ingestPatrimonioPayload(FALLBACK_PATRIMONIO_PAYLOAD);
       await decompressComprasFallback();
-      // Automatically check Google Sheets for live updates on startup
-      setTimeout(() => {
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          refreshFromGoogleSheets();
-          google.script.run.withSuccessHandler(res => {
-            if (res && res.ok) {
-              ingestPatrimonioPayload(res);
-              if (activePortalModule === 'compras') renderPlatesTab();
-            }
-          }).getPatrimonioSheetData();
-        }
-      }, 600);
+      // Snapshot is immediately available and active without blocking RPC on startup.
+      // Live updates can be triggered on demand via the "Atualizar Base Sheets" button.
     });
   </script>
 </body>
