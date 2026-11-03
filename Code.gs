@@ -20,6 +20,11 @@ const CTA_DEFAULT_TOKEN = '1fz4gyqEtZ'; // Token POWER BI configurado no CTA Sma
  * Serves the Executive HTML Dashboard on HTTP GET.
  */
 function doGet(e) {
+  if (e && e.parameter && (e.parameter.action === 'getAetData' || e.parameter.api === 'aet')) {
+    const data = getAetDriveLicenses(e.parameter.force === 'true');
+    return ContentService.createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('TSA Cargo | Portal Executivo — Compras, Manutenção & Patrimônio Frota')
     .setFaviconUrl('https://cdn-icons-png.flaticon.com/512/2830/2830305.png')
@@ -413,4 +418,167 @@ function savePatrimonioFipeToSheet(updatesList) {
       error: err && err.message ? err.message : String(err)
     };
   }
+}
+
+
+/**
+ * ============================================================================
+ * AUDITORIA DE LICENÇAS AET (AUTORIZAÇÃO ESPECIAL DE TRÂNSITO) — GOOGLE DRIVE
+ * Pasta Raiz: 16NnsTxTEA9sAll4Z8wFnzUh4uxDgA0R8
+ * ============================================================================
+ */
+const DRIVE_AET_FOLDER_ID = '16NnsTxTEA9sAll4Z8wFnzUh4uxDgA0R8';
+
+function getAetDriveLicenses(forceRescan) {
+  try {
+    const cache = PropertiesService.getScriptProperties();
+    if (!forceRescan) {
+      const cached = cache.getProperty('AET_DATA_CACHE');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.aets && parsed.aets.length > 0) {
+            return parsed;
+          }
+        } catch(e) {}
+      }
+    }
+
+    const rootFolder = DriveApp.getFolderById(DRIVE_AET_FOLDER_ID);
+    const subfolders = rootFolder.getFolders();
+    const allAets = [];
+    let folderCount = 0;
+
+    while (subfolders.hasNext()) {
+      const folder = subfolders.next();
+      const folderName = folder.getName().trim();
+      const folderId = folder.getId();
+      folderCount++;
+
+      // Standardize plate
+      let placa = folderName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (placa === 'GNH0I21') placa = 'GHN0I21';
+
+      // Scan active files in main folder
+      const files = folder.getFiles();
+      while (files.hasNext()) {
+        const file = files.next();
+        const fName = file.getName();
+        if (fName.toLowerCase().indexOf('.pdf') !== -1) {
+          allAets.push(parseAetFileName_(fName, file.getId(), folderId, placa, false));
+        }
+      }
+
+      // Scan subfolder 'vencidas' / 'historico' if present
+      const innerFolders = folder.getFolders();
+      while (innerFolders.hasNext()) {
+        const sub = innerFolders.next();
+        const subName = sub.getName().toLowerCase();
+        if (subName.indexOf('vencid') !== -1 || subName.indexOf('antig') !== -1 || subName.indexOf('histor') !== -1) {
+          const vFiles = sub.getFiles();
+          while (vFiles.hasNext()) {
+            const vFile = vFiles.next();
+            const vfName = vFile.getName();
+            if (vfName.toLowerCase().indexOf('.pdf') !== -1) {
+              allAets.push(parseAetFileName_(vfName, vFile.getId(), folderId, placa, true));
+            }
+          }
+        }
+      }
+    }
+
+    const payload = {
+      ok: true,
+      rootFolderId: DRIVE_AET_FOLDER_ID,
+      folderCount: folderCount,
+      scannedAt: Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss'),
+      aets: allAets
+    };
+
+    try {
+      cache.setProperty('AET_DATA_CACHE', JSON.stringify(payload));
+    } catch(e) {}
+
+    return payload;
+  } catch (err) {
+    return {
+      ok: false,
+      error: err && err.message ? err.message : String(err)
+    };
+  }
+}
+
+function parseAetFileName_(fileName, fileId, folderId, placa, isArchived) {
+  const nameLower = fileName.toLowerCase();
+
+  // Date extraction
+  let vencimentoISO = null;
+  let vencimentoStr = null;
+  const dateMatch = fileName.match(/v.?\s*(\d{1,2})\s*[\.\/\-]\s*(\d{1,2})\s*[\.\/\-]\s*(\d{2,4})/i);
+  if (dateMatch) {
+    const day = ('0' + dateMatch[1]).slice(-2);
+    const mon = ('0' + dateMatch[2]).slice(-2);
+    let yr = dateMatch[3];
+    if (yr.length === 2) yr = '20' + yr;
+    if (yr === '206') yr = '2026';
+    vencimentoStr = day + '/' + mon + '/' + yr;
+    vencimentoISO = yr + '-' + mon + '-' + day;
+  }
+
+  // Config extraction
+  const nameWithoutDate = nameLower.replace(/v.?\s*\d{1,2}[\.\/\-]\s*\d{1,2}[\.\/\-]\s*\d{2,4}.*$/i, '');
+  const isAnchieta = /anchiett?a/.test(nameWithoutDate);
+  const isRodotrem = /(^|[^\d])30([,\.]00?)?(\s*m(t|etros?)?)?([^\d]|$)/.test(nameWithoutDate) || /rodotrem/.test(nameWithoutDate);
+  const isBitrem = /(^|[^\d])25([,\.]50?|[,\.]00?)?(\s*m(t|etros?)?)?([^\d]|$)/.test(nameWithoutDate) || /bi-?trem/.test(nameWithoutDate);
+
+  let config = 'Geral';
+  let configType = 'GERAL';
+  if (isAnchieta && isRodotrem) {
+    config = 'Rodotrem 30,00m (Anchieta)';
+    configType = 'RODOTREM';
+  } else if (isAnchieta && isBitrem) {
+    config = 'Bi-trem 25,50m (Anchieta)';
+    configType = 'BITREM';
+  } else if (isAnchieta) {
+    config = 'Anchieta SP';
+    configType = 'ANCHIETA';
+  } else if (isRodotrem) {
+    config = 'Rodotrem 30,00m';
+    configType = 'RODOTREM';
+  } else if (isBitrem) {
+    config = 'Bi-trem 25,50m';
+    configType = 'BITREM';
+  }
+
+  // Agency
+  let orgao = 'DNIT';
+  if (/der\s*-?\s*sp/i.test(fileName)) orgao = 'DER-SP';
+  else if (/der\s*-?\s*mg/i.test(fileName)) orgao = 'DER-MG';
+  else if (/dnit/i.test(fileName)) orgao = 'DNIT';
+  else if (/artesp/i.test(fileName)) orgao = 'ARTESP';
+
+  // Number
+  let numeroAet = 'S/N';
+  const numMatch = fileName.match(/aet\.?\s*([A-Z0-9\/\.\-]+?)(?=\s*(?:-|v\.|\())/i) || 
+                   fileName.match(/(?:der\s*sp|der\s*mg|dnit)\s*(\d{4,8})/i) ||
+                   fileName.match(/aet\.?\s*([0-9]{4,8})/i);
+  if (numMatch) {
+    numeroAet = numMatch[1].replace(/[\.\s]/g, '');
+  }
+
+  return {
+    placa: placa,
+    fileId: fileId,
+    folderId: folderId,
+    fileName: fileName,
+    config: config,
+    configType: configType,
+    orgao: orgao,
+    numeroAet: numeroAet,
+    dataVencimentoISO: vencimentoISO,
+    dataVencimentoStr: vencimentoStr,
+    isArchived: isArchived ? true : false,
+    viewUrl: 'https://drive.google.com/file/d/' + fileId + '/view',
+    folderUrl: 'https://drive.google.com/drive/folders/' + folderId
+  };
 }
