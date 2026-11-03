@@ -3204,39 +3204,53 @@
     </nav>
 
     <!-- Diesel Filter Bar -->
-    <div class="filters-card">
-      <div class="filters-row">
-        <div class="filter-group" style="flex: 1.5; min-width: 220px;">
-          <label><i data-lucide="search" style="width:13px;height:13px;"></i> Buscar Placa / Motorista / Posto</label>
-          <input type="text" id="dfSearch" placeholder="Ex: DAF, BWV9D84, São Vicente, Adebaldo..." oninput="applyDieselFilters()">
+    <section class="filter-panel">
+      <div class="filter-header">
+        <div class="filter-title">
+          <i data-lucide="sliders-horizontal" style="width:15px;height:15px;color:var(--tsa-green);"></i>
+          <span>Filtros Operacionais & Telemetria — Controle de Diesel</span>
         </div>
-        <div class="filter-group" style="min-width: 140px;">
-          <label><i data-lucide="calendar" style="width:13px;height:13px;"></i> Mês</label>
-          <select id="dfMes" onchange="applyDieselFilters()">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="dieselFilterCounterText" style="font-size:0.76rem;color:var(--text-muted);font-weight:600;">Exibindo 100% dos abastecimentos</span>
+          <button class="btn btn-secondary" style="padding:5px 10px;font-size:0.74rem;" onclick="resetDieselFilters()">
+            <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
+            Limpar Filtros Diesel
+          </button>
+        </div>
+      </div>
+
+      <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));">
+        <div class="filter-group" style="grid-column: span 2; min-width: 240px;">
+          <label>Busca Rápida (Placa, Motorista, Posto)</label>
+          <input type="text" id="dfSearch" class="filter-control" placeholder="Ex: DAF, BWV9D84, São Vicente, Adebaldo..." oninput="applyDieselFilters()">
+        </div>
+        <div class="filter-group">
+          <label>Mês</label>
+          <select id="dfMes" class="filter-control" onchange="applyDieselFilters()">
             <option value="ALL">Todos os Meses</option>
           </select>
         </div>
-        <div class="filter-group" style="min-width: 130px;">
-          <label><i data-lucide="droplet" style="width:13px;height:13px;"></i> Combustível</label>
-          <select id="dfCombustivel" onchange="applyDieselFilters()">
+        <div class="filter-group">
+          <label>Combustível</label>
+          <select id="dfCombustivel" class="filter-control" onchange="applyDieselFilters()">
             <option value="ALL">Todos</option>
           </select>
         </div>
-        <div class="filter-group" style="min-width: 160px;">
-          <label><i data-lucide="fuel" style="width:13px;height:13px;"></i> Posto / Base</label>
-          <select id="dfPosto" onchange="applyDieselFilters()">
+        <div class="filter-group">
+          <label>Posto / Base</label>
+          <select id="dfPosto" class="filter-control" onchange="applyDieselFilters()">
             <option value="ALL">Todos os Postos</option>
           </select>
         </div>
-        <div class="filter-group" style="min-width: 170px;">
-          <label><i data-lucide="building-2" style="width:13px;height:13px;"></i> Empresa / Frota</label>
-          <select id="dfEmpresa" onchange="applyDieselFilters()">
+        <div class="filter-group">
+          <label>Empresa / Frota</label>
+          <select id="dfEmpresa" class="filter-control" onchange="applyDieselFilters()">
             <option value="ALL">Todas as Empresas</option>
           </select>
         </div>
-        <div class="filter-group" style="min-width: 170px;">
-          <label><i data-lucide="activity" style="width:13px;height:13px;"></i> Filtro de Auditoria</label>
-          <select id="dfAuditoria" onchange="applyDieselFilters()">
+        <div class="filter-group">
+          <label>Filtro de Auditoria</label>
+          <select id="dfAuditoria" class="filter-control" onchange="applyDieselFilters()">
             <option value="ALL">Todos os Abastecimentos</option>
             <option value="ANOMALIES_ONLY">⚠️ Apenas Anomalias (Abaixo, Absurdas, Neg.)</option>
             <option value="CRITICAL_LOW">🔴 Consumo Crítico (Abaixo da Meta)</option>
@@ -3247,7 +3261,7 @@
         </div>
       </div>
       <div id="dieselActiveChipsContainer" class="active-chips" style="margin-top: 10px;"></div>
-    </div>
+    </section>
 
     <!-- TAB 1: OVERVIEW & KPIS -->
     <div id="diesel-tab-overview" class="tab-pane active">
@@ -3642,6 +3656,12 @@
       if (Math.abs(val) >= 1e3) return 'R$ ' + (val / 1e3).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' mil';
       return fmtBRL.format(val);
     };
+    const fmtCompact = (val) => {
+      if (Math.abs(val) >= 1e6) return (val / 1e6).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + 'M';
+      if (Math.abs(val) >= 1e3) return (val / 1e3).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + 'k';
+      return typeof val === 'number' ? Math.round(val).toLocaleString('pt-BR') : String(val);
+    };
+    fmtCompact.format = fmtCompact;
     const fmtInt = new Intl.NumberFormat('pt-BR');
 
     function parseBrazilianNumber(str) {
@@ -4637,7 +4657,7 @@
       document.getElementById('trendInsightsContainer').innerHTML = `
         <div class="insight-card">
           <h4><i data-lucide="flame" style="width:17px;height:17px;color:var(--tsa-red);"></i> Pico Sazonal OPEX: ${formatMonthLabel(peakMonth)} (${peakMonth ? fmtBRLCompact(mStats[peakMonth].opex) : 'R$ 0'})</h4>
-          <p>A média mensal de OPEX recorrente é de <strong>${fmtBRLCompact(avgMonthlyOpex)}/mês</strong>. O mês de maior press��o operacional foi <strong>${formatMonthLabel(peakMonth)}</strong> (${avgMonthlyOpex > 0 && peakMonth ? (((mStats[peakMonth].opex / avgMonthlyOpex) - 1) * 100).toFixed(1) : 0}% acima da média).</p>
+          <p>A média mensal de OPEX recorrente é de <strong>${fmtBRLCompact(avgMonthlyOpex)}/mês</strong>. O mês de maior pressão operacional foi <strong>${formatMonthLabel(peakMonth)}</strong> (${avgMonthlyOpex > 0 && peakMonth ? (((mStats[peakMonth].opex / avgMonthlyOpex) - 1) * 100).toFixed(1) : 0}% acima da média).</p>
         </div>
         <div class="insight-card blue">
           <h4><i data-lucide="trending-up" style="width:17px;height:17px;color:var(--blue);"></i> Ritmo Recente (${formatMonthLabel(lastM)} vs. ${prevM ? formatMonthLabel(prevM) : '-'})</h4>
@@ -5647,7 +5667,7 @@
           .withFailureHandler(err => {
             btn.classList.remove('loading');
             btn.querySelector('span').textContent = 'Atualizar Base Sheets';
-            showToast('Falha na comunica��ão com o servidor GAS: ' + err.message, 'error');
+            showToast('Falha na comunicação com o servidor GAS: ' + err.message, 'error');
           })
           .getSheetData();
         return;
@@ -7840,9 +7860,32 @@
       dieselPlatesCurrentPage = 1;
       dieselDriversCurrentPage = 1;
 
+      const counterEl = document.getElementById('dieselFilterCounterText');
+      if (counterEl) {
+        const total = dieselRawRecords.length;
+        const count = dieselFilteredRecords.length;
+        if (count === total) {
+          counterEl.textContent = `Exibindo 100% dos abastecimentos (${total.toLocaleString('pt-BR')} registros)`;
+        } else {
+          counterEl.textContent = `Exibindo ${count.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} abastecimentos (${((count / (total || 1)) * 100).toFixed(0)}%)`;
+        }
+      }
+
       if (activePortalModule === 'diesel') {
         updateDieselDashboards();
       }
+    }
+
+    function resetDieselFilters() {
+      const ids = ['dfSearch', 'dfMes', 'dfCombustivel', 'dfPosto', 'dfEmpresa', 'dfAuditoria'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          if (el.tagName === 'SELECT') el.value = 'ALL';
+          else el.value = '';
+        }
+      });
+      applyDieselFilters();
     }
 
     function renderDieselActiveChips() {
@@ -7968,8 +8011,8 @@
         ],
         xaxis: { categories: months, labels: { style: { colors: theme.textColor } } },
         yaxis: [
-          { title: { text: 'Litros', style: { color: theme.textColor } }, labels: { style: { colors: theme.textColor }, formatter: v => fmtInt.format(v) + ' L' } },
-          { opposite: true, title: { text: 'R$', style: { color: theme.textColor } }, labels: { style: { colors: theme.textColor }, formatter: v => 'R$ ' + fmtCompact.format(v) } }
+          { title: { text: 'Litros', style: { color: theme.textColor } }, labels: { style: { colors: theme.textColor }, formatter: v => fmtInt.format(Math.round(v)) + ' L' } },
+          { opposite: true, title: { text: 'R$', style: { color: theme.textColor } }, labels: { style: { colors: theme.textColor }, formatter: v => fmtBRLCompact(v) } }
         ],
         colors: ['#007A33', '#E30613'],
         stroke: { width: [0, 3], curve: 'smooth' },
