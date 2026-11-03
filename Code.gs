@@ -1,7 +1,8 @@
 /**
  * ============================================================================
  * TSA CARGO / TSA LOGÍSTICA — EXECUTIVE BI PORTAL
- * Module 1: Compras & Custos de Manutenção (153AuVXowt0wV1PArUpfHeFDJ2O_5Dy_PSwBl_k98nnw)
+ * Module 1: Compras & Custos de Manutenção — Ano Completo 2026 (153AuVXowt0wV1PArUpfHeFDJ2O_5Dy_PSwBl_k98nnw)
+ *   - Filtros Temporais, Sazonalidade, CAPEX vs OPEX, TCO Placa × FIPE, SLA & Outliers
  * Module 2: Patrimônio Frota TSA (1tRhBfK38m58vzoFmoxv8QWxjG6CYN66u7ozsE3RuI8Q)
  *   - Sincronização Tabela FIPE Oficial + Regra de Depreciação Empilhadeiras
  *   - Gravação direta na coluna FIPE / Idade da Planilha Patrimônio Frota
