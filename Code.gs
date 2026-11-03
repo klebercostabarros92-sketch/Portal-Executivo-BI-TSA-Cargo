@@ -28,6 +28,85 @@ function doGet(e) {
 }
 
 /**
+ * Webhook Receptor: Recebe novos abastecimentos em tempo real via HTTP POST
+ * Permite que o CTA Smart ou qualquer webhook envie o registro do bico/bomba diretamente.
+ */
+function doPost(e) {
+  try {
+    const rawData = e && e.postData && e.postData.contents ? e.postData.contents : null;
+    if (!rawData) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'No payload received' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(rawData);
+    } catch (parseErr) {
+      payload = e.parameter;
+    }
+
+    const res = appendAbastecimentoRealTime(payload);
+    return ContentService.createTextOutput(JSON.stringify(res))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Anexa novo registro de abastecimento na planilha Google Sheets do Diesel (1uZY3XdXKa4X_gphl0Rl_P2VS1ztogsXFX9AOlLP2-kU)
+ * Garante mapeamento das 42 colunas e anexação contínua.
+ */
+function appendAbastecimentoRealTime(item) {
+  try {
+    const ss = SpreadsheetApp.openById(DIESEL_SPREADSHEET_ID);
+    const sheet = ss.getSheets()[0];
+    
+    const items = Array.isArray(item) ? item : [item];
+    const newRows = [];
+
+    items.forEach(function(rec) {
+      const row = new Array(42).fill('');
+      row[0] = rec.data_hora_inicio || rec.dataHoraInicio || rec.data || Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss');
+      row[1] = rec.data_hora_fim || rec.dataHoraFim || row[0];
+      row[2] = rec.empresa || 'TSA CARGO';
+      row[3] = String(rec.placa || rec.veiculo || '').toUpperCase().trim();
+      row[4] = rec.nr_frota || rec.frota || '';
+      row[5] = rec.descricao || '';
+      row[6] = rec.categoria || '';
+      row[7] = rec.ano || '';
+      row[8] = rec.modelo || '';
+      row[9] = rec.fornecedor || '';
+      row[10] = rec.fabricante || '';
+      row[11] = rec.volume || rec.litros || rec.quantidade || '';
+      row[12] = rec.custo_total || rec.valor_total || rec.total || '';
+      row[13] = rec.odometro || rec.km || '';
+      row[14] = rec.distancia || '';
+      row[15] = rec.custo_por_km || '';
+      row[16] = rec.media_kml || rec.media || '';
+      row[29] = rec.combustivel || rec.produto || 'S10';
+      row[32] = rec.motorista || rec.operador || '';
+      row[33] = rec.posto || 'Tanque Próprio TSA';
+      
+      if (row[3] || row[11]) {
+        newRows.push(row);
+      }
+    });
+
+    if (newRows.length > 0) {
+      const lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow + 1, 1, newRows.length, 42).setValues(newRows);
+      return { ok: true, appended: newRows.length };
+    }
+    return { ok: false, error: 'Dados insuficientes para anexar' };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
  * Helper to read any spreadsheet by ID and optional sheet name.
  */
 function readSpreadsheetPayload_(spreadsheetId, requestedSheetName) {
