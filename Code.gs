@@ -13,6 +13,8 @@
 const SPREADSHEET_ID = '153AuVXowt0wV1PArUpfHeFDJ2O_5Dy_PSwBl_k98nnw';
 const PATRIMONIO_SPREADSHEET_ID = '1tRhBfK38m58vzoFmoxv8QWxjG6CYN66u7ozsE3RuI8Q';
 const DIESEL_SPREADSHEET_ID = '1uZY3XdXKa4X_gphl0Rl_P2VS1ztogsXFX9AOlLP2-kU';
+const CTA_DEFAULT_TOKEN = '1fz4gyqEtZ'; // Token POWER BI configurado no CTA Smart
+
 
 /**
  * Serves the Executive HTML Dashboard on HTTP GET.
@@ -108,36 +110,49 @@ function getDieselSheetData(requestedSheetName) {
  * O token da API deve ser salvo em Propriedades do Script (Chave: CTA_API_TOKEN).
  */
 function syncCtaSmartAbastecimentosDiarios() {
-  const token = PropertiesService.getScriptProperties().getProperty('CTA_API_TOKEN');
+  const token = PropertiesService.getScriptProperties().getProperty('CTA_API_TOKEN') || CTA_DEFAULT_TOKEN;
   if (!token) {
     Logger.log('CTA_API_TOKEN não configurado nas Propriedades do Script.');
     return { ok: false, error: 'Token não configurado.' };
   }
   try {
-    // Chamada à API REST do CTA Smart com o token configurado
     const hoje = new Date();
     const ontem = new Date(hoje.getTime() - 24 * 60 * 60 * 1000);
     const dStr = Utilities.formatDate(ontem, 'America/Sao_Paulo', 'yyyy-MM-dd');
 
-    const apiUrl = 'https://api.ctasmart.com.br/v1/abastecimentos?data_inicio=' + dStr + '&data_fim=' + dStr;
-    const response = UrlFetchApp.fetch(apiUrl, {
-      method: 'get',
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Accept': 'application/json'
-      },
-      muteHttpExceptions: true
-    });
+    const candidateUrls = [
+      'https://ctasmart.com.br/SincronizaAbastecimentos?token=' + token + '&data_inicio=' + dStr + '&data_fim=' + dStr + '&formato=json',
+      'https://api.ctasmart.com.br/v1/abastecimentos?data_inicio=' + dStr + '&data_fim=' + dStr
+    ];
 
-    const statusCode = response.getResponseCode();
-    if (statusCode === 200) {
-      const data = JSON.parse(response.getContentText());
-      Logger.log('Abastecimentos recebidos da API CTA Smart: ' + (data.length || 0));
-      return { ok: true, count: data.length || 0 };
-    } else {
-      Logger.log('Erro na API CTA Smart: HTTP ' + statusCode + ' - ' + response.getContentText());
-      return { ok: false, status: statusCode, error: response.getContentText() };
+    let lastError = null;
+    for (let u = 0; u < candidateUrls.length; u++) {
+      try {
+        const response = UrlFetchApp.fetch(candidateUrls[u], {
+          method: 'get',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/json'
+          },
+          muteHttpExceptions: true
+        });
+
+        const statusCode = response.getResponseCode();
+        if (statusCode === 200) {
+          const txt = response.getContentText();
+          if (txt && (txt.trim().startsWith('{') || txt.trim().startsWith('['))) {
+            const data = JSON.parse(txt);
+            Logger.log('Abastecimentos recebidos da API CTA Smart: ' + (Array.isArray(data) ? data.length : 1));
+            return { ok: true, count: Array.isArray(data) ? data.length : 1, data: data };
+          }
+        }
+        lastError = 'HTTP ' + statusCode + ': ' + response.getContentText().slice(0, 200);
+      } catch (errLoop) {
+        lastError = errLoop.message;
+      }
     }
+    Logger.log('Tentativas de sincronização CTA Smart: ' + lastError);
+    return { ok: false, error: lastError };
   } catch (err) {
     Logger.log('Exceção ao sincronizar CTA Smart: ' + err.message);
     return { ok: false, error: err.message };
