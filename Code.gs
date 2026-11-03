@@ -57,7 +57,7 @@ function doPost(e) {
 
 /**
  * Anexa novo registro de abastecimento na planilha Google Sheets do Diesel (1uZY3XdXKa4X_gphl0Rl_P2VS1ztogsXFX9AOlLP2-kU)
- * Garante mapeamento das 42 colunas e anexação contínua.
+ * Mapeamento padronizado com as 16 colunas da aba 'Abastecimentos 2026'.
  */
 function appendAbastecimentoRealTime(item) {
   try {
@@ -68,36 +68,41 @@ function appendAbastecimentoRealTime(item) {
     const newRows = [];
 
     items.forEach(function(rec) {
-      const row = new Array(42).fill('');
-      row[0] = rec.data_hora_inicio || rec.dataHoraInicio || rec.data || Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss');
-      row[1] = rec.data_hora_fim || rec.dataHoraFim || row[0];
+      const dataFull = rec.data_hora_inicio || rec.dataHoraInicio || rec.data || Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss');
+      let dStr = dataFull;
+      let hStr = rec.hora || '';
+      if (dataFull.includes(' ')) {
+        const parts = dataFull.split(' ');
+        dStr = parts[0];
+        if (!hStr) hStr = parts[1];
+      }
+
+      const row = new Array(16).fill('');
+      row[0] = dStr;
+      row[1] = hStr;
       row[2] = rec.empresa || 'TSA CARGO';
       row[3] = String(rec.placa || rec.veiculo || '').toUpperCase().trim();
       row[4] = rec.nr_frota || rec.frota || '';
-      row[5] = rec.descricao || '';
+      row[5] = rec.modelo || rec.descricao || '';
       row[6] = rec.categoria || '';
-      row[7] = rec.ano || '';
-      row[8] = rec.modelo || '';
-      row[9] = rec.fornecedor || '';
-      row[10] = rec.fabricante || '';
-      row[11] = rec.volume || rec.litros || rec.quantidade || '';
-      row[12] = rec.custo_total || rec.valor_total || rec.total || '';
-      row[13] = rec.odometro || rec.km || '';
-      row[14] = rec.distancia || '';
-      row[15] = rec.custo_por_km || '';
-      row[16] = rec.media_kml || rec.media || '';
-      row[29] = rec.combustivel || rec.produto || 'S10';
-      row[32] = rec.motorista || rec.operador || '';
-      row[33] = rec.posto || 'Tanque Próprio TSA';
+      row[7] = rec.volume || rec.litros || rec.quantidade || '';
+      row[8] = rec.custo || rec.custo_total || rec.valor_total || rec.total || '';
+      row[9] = rec.odometro || rec.km || '';
+      row[10] = rec.distancia || '';
+      row[11] = rec.media || rec.media_kml || rec.media_kilometro_litro || '';
+      row[12] = rec.posto || 'Tanque Próprio TSA';
+      row[13] = rec.combustivel || rec.produto || 'S10';
+      row[14] = rec.frentista || '';
+      row[15] = rec.motorista || rec.operador || '';
       
-      if (row[3] || row[11]) {
+      if (row[3] || row[7]) {
         newRows.push(row);
       }
     });
 
     if (newRows.length > 0) {
       const lastRow = sheet.getLastRow();
-      sheet.getRange(lastRow + 1, 1, newRows.length, 42).setValues(newRows);
+      sheet.getRange(lastRow + 1, 1, newRows.length, 16).setValues(newRows);
       return { ok: true, appended: newRows.length };
     }
     return { ok: false, error: 'Dados insuficientes para anexar' };
@@ -254,10 +259,10 @@ function syncCtaSmartAbastecimentosDiarios(dInicioParam, dFimParam) {
     if (lastRow > 1) {
       const startCheck = Math.max(2, lastRow - 400);
       const numRows = lastRow - startCheck + 1;
-      const recentData = sheet.getRange(startCheck, 1, numRows, 14).getValues();
+      const recentData = sheet.getRange(startCheck, 1, numRows, 16).getValues();
       recentData.forEach(function(r) {
-        // Chave: dataInicio_placa_volume_odometro
-        const k = String(r[0] || '').trim() + '_' + String(r[3] || '').trim().toUpperCase() + '_' + String(r[11] || '').trim();
+        // Chave: data_hora_placa_volume
+        const k = String(r[0] || '').trim() + '_' + String(r[1] || '').trim() + '_' + String(r[3] || '').trim().toUpperCase() + '_' + String(r[7] || '').trim();
         existingKeys.add(k);
       });
     }
@@ -266,68 +271,42 @@ function syncCtaSmartAbastecimentosDiarios(dInicioParam, dFimParam) {
     const processedIds = [];
 
     list.forEach(function(item) {
-      const dataInicio = (item.data_inicio && item.hora_inicio) ? (item.data_inicio + ' ' + item.hora_inicio) : (item.data_inicio || '');
-      const dataFim = (item.data_fim && item.hora_fim) ? (item.data_fim + ' ' + item.hora_fim) : (item.data_fim || dataInicio);
+      const dStr = item.data_inicio || Utilities.formatDate(hoje, 'America/Sao_Paulo', 'dd/MM/yyyy');
+      const hStr = item.hora_inicio || '';
       const placa = item.veiculo && item.veiculo.placa ? String(item.veiculo.placa).toUpperCase().trim() : '';
       const volume = item.volume || item.volume_fixed || '';
       
-      const key = dataInicio + '_' + placa + '_' + volume;
+      const key = dStr + '_' + hStr + '_' + placa + '_' + volume;
       if (existingKeys.has(key)) {
         // Já existe na planilha
         return;
       }
       existingKeys.add(key);
 
-      const row = new Array(42).fill('');
-      row[0] = dataInicio;
-      row[1] = dataFim;
+      const row = new Array(16).fill('');
+      row[0] = dStr;
+      row[1] = hStr;
       row[2] = (item.empresa && item.empresa.nome) ? item.empresa.nome : 'TSA CARGO';
       row[3] = placa;
       row[4] = (item.veiculo && item.veiculo.frota) ? item.veiculo.frota : '';
       row[5] = (item.veiculo && item.veiculo.nome) ? item.veiculo.nome : '';
-      row[6] = ''; // Categoria
-      row[7] = ''; // Ano
-      row[8] = (item.veiculo && item.veiculo.nome) ? item.veiculo.nome : '';
-      row[9] = '';
-      row[10] = '';
-      row[11] = volume;
-      row[12] = item.custo || '';
-      row[13] = item.odometro || '';
-      row[14] = item.distancia || '';
-      row[15] = item.custo_unitario || '';
-      row[16] = item.media_kilometro_litro || '';
-      row[17] = item.horimetro || '';
-      row[18] = item.horas_trabalhadas || '';
-      row[19] = '';
-      row[20] = item.media_litro_hora || '';
-      row[21] = (item.empresa && item.empresa.cnpj) ? item.empresa.cnpj : '';
-      row[22] = item.chave_nfe || '';
-      row[23] = item.lote || '';
-      row[24] = item.posto && item.posto.posto_comercial ? item.posto.posto_comercial : '';
-      row[25] = item.bypass || '';
-      row[26] = item.completo || '';
-      row[27] = item.encerrante || item.encerrante_fixed || '';
-      row[28] = item.produto_categoria_id || '';
-      row[29] = item.combustivel && item.combustivel.descricao ? item.combustivel.descricao : 'S10';
-      row[30] = (item.motorista && item.motorista.cpf) ? item.motorista.cpf : '';
-      row[31] = '';
-      row[32] = (item.motorista && item.motorista.nome) ? item.motorista.nome : '';
-      row[33] = (item.posto && item.posto.nome) ? item.posto.nome : '';
-      row[34] = (item.posto && item.posto.uf) ? item.posto.uf : '';
-      row[35] = (item.posto && item.posto.cnpj) ? item.posto.cnpj : '';
-      row[36] = (item.tanque && item.tanque.nome) ? item.tanque.nome : '';
-      row[37] = (item.bomba && item.bomba.nome) ? item.bomba.nome : '';
-      row[38] = (item.extra1 && item.extra1.descricao) ? item.extra1.descricao : '';
-      row[39] = (item.extra2 && item.extra2.descricao) ? item.extra2.descricao : '';
-      row[40] = (item.extra3 && item.extra3.descricao) ? item.extra3.descricao : '';
-      row[41] = (item.extra4 && item.extra4.descricao) ? item.extra4.descricao : '';
+      row[6] = (item.veiculo && item.veiculo.tipo) ? item.veiculo.tipo : '';
+      row[7] = volume;
+      row[8] = item.custo || '';
+      row[9] = item.odometro || '';
+      row[10] = item.distancia || '';
+      row[11] = item.media_kilometro_litro || '';
+      row[12] = (item.posto && item.posto.nome) ? item.posto.nome : 'Posto TSA';
+      row[13] = (item.combustivel && item.combustivel.descricao) ? item.combustivel.descricao : 'S10';
+      row[14] = (item.frentista && item.frentista.nome) ? item.frentista.nome : '';
+      row[15] = (item.motorista && item.motorista.nome) ? item.motorista.nome : '';
 
       newRows.push(row);
       if (item.id) processedIds.push(item.id);
     });
 
     if (newRows.length > 0) {
-      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 42).setValues(newRows);
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 16).setValues(newRows);
       Logger.log('Gravadas com sucesso ' + newRows.length + ' novas linhas na planilha do Diesel.');
     }
 
