@@ -3211,11 +3211,46 @@
           <span>Filtros Operacionais & Telemetria — Controle de Diesel</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span id="dieselDateSpanBadge" class="pill pill-green" style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;">Período: Ano 2026</span>
           <span id="dieselFilterCounterText" style="font-size:0.76rem;color:var(--text-muted);font-weight:600;">Exibindo 100% dos abastecimentos</span>
           <button class="btn btn-secondary" style="padding:5px 10px;font-size:0.74rem;" onclick="resetDieselFilters()">
             <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
             Limpar Filtros Diesel
           </button>
+        </div>
+      </div>
+
+      <!-- Quick Date Presets + Calendar Pickers for Diesel -->
+      <div class="date-presets-bar">
+        <div class="preset-pills-wrap" id="dieselDatePresetPills">
+          <span style="font-size:0.7rem;font-weight:800;text-transform:uppercase;color:var(--text-muted);margin-right:4px;display:inline-flex;align-items:center;gap:4px;">
+            <i data-lucide="calendar" style="width:13px;height:13px;color:var(--tsa-green);"></i> Período:
+          </span>
+          <button type="button" class="preset-pill active" data-preset="YTD" onclick="applyDieselDatePreset('YTD')">Ano 2026 (YTD)</button>
+          <button type="button" class="preset-pill" data-preset="TODAY" onclick="applyDieselDatePreset('TODAY')">Hoje</button>
+          <button type="button" class="preset-pill" data-preset="YESTERDAY" onclick="applyDieselDatePreset('YESTERDAY')">Ontem</button>
+          <button type="button" class="preset-pill" data-preset="LAST_7" onclick="applyDieselDatePreset('LAST_7')">Últimos 7d</button>
+          <button type="button" class="preset-pill" data-preset="LAST_15" onclick="applyDieselDatePreset('LAST_15')">Últimos 15d</button>
+          <button type="button" class="preset-pill" data-preset="LAST_30" onclick="applyDieselDatePreset('LAST_30')">Últimos 30d</button>
+          <button type="button" class="preset-pill" data-preset="CUR_MONTH" onclick="applyDieselDatePreset('CUR_MONTH')">Mês Atual</button>
+          <button type="button" class="preset-pill" data-preset="PREV_MONTH" onclick="applyDieselDatePreset('PREV_MONTH')">Mês Anterior</button>
+        </div>
+
+        <div class="date-range-inline">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <label for="dfMes">Mês:</label>
+            <select id="dfMes" class="filter-control" style="padding:5px 8px;font-size:0.75rem;min-width:145px;" onchange="onDieselMonthDropdownChange()">
+              <option value="ALL">Todos os Meses</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <label for="dfDateFrom">De:</label>
+            <input type="date" id="dfDateFrom" class="filter-control" style="padding:4px 8px;font-size:0.75rem;" onchange="onDieselCustomDateChange()">
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <label for="dfDateTo">Até:</label>
+            <input type="date" id="dfDateTo" class="filter-control" style="padding:4px 8px;font-size:0.75rem;" onchange="onDieselCustomDateChange()">
+          </div>
         </div>
       </div>
 
@@ -3225,27 +3260,21 @@
           <input type="text" id="dfSearch" class="filter-control" placeholder="Ex: DAF, BWV9D84, São Vicente, Adebaldo..." oninput="applyDieselFilters()">
         </div>
         <div class="filter-group">
-          <label>Mês</label>
-          <select id="dfMes" class="filter-control" onchange="applyDieselFilters()">
-            <option value="ALL">Todos os Meses</option>
-          </select>
-        </div>
-        <div class="filter-group">
           <label>Combustível</label>
           <select id="dfCombustivel" class="filter-control" onchange="applyDieselFilters()">
-            <option value="ALL">Todos</option>
+            <option value="ALL">Todos os Combustíveis</option>
           </select>
         </div>
         <div class="filter-group">
           <label>Posto / Base</label>
           <select id="dfPosto" class="filter-control" onchange="applyDieselFilters()">
-            <option value="ALL">Todos os Postos</option>
+            <option value="ALL">Todos os Postos / Bases</option>
           </select>
         </div>
         <div class="filter-group">
           <label>Empresa / Frota</label>
           <select id="dfEmpresa" class="filter-control" onchange="applyDieselFilters()">
-            <option value="ALL">Todas as Empresas</option>
+            <option value="ALL">Todas as Empresas / Frotas</option>
           </select>
         </div>
         <div class="filter-group">
@@ -3254,7 +3283,7 @@
             <option value="ALL">Todos os Abastecimentos</option>
             <option value="ANOMALIES_ONLY">⚠️ Apenas Anomalias (Abaixo, Absurdas, Neg.)</option>
             <option value="CRITICAL_LOW">🔴 Consumo Crítico (Abaixo da Meta)</option>
-            <option value="ABSURD_HIGH">🟣 Média Absurda (Erro / Tanque Incompleto)</option>
+            <option value="ABSURD_HIGH">�� Média Absurda (Erro / Tanque Incompleto)</option>
             <option value="NEG_ODO">⛔ Hodômetro Invertido / Negativo</option>
             <option value="OK_ONLY">✅ Apenas Dentro da Meta</option>
           </select>
@@ -7802,7 +7831,84 @@
       const modCnt = document.getElementById('modCountDiesel');
       if (modCnt) modCnt.textContent = fmtInt.format(dieselRawRecords.length) + ' abast.';
 
+      const validDates = dieselRawRecords.map(r => r.dateISO).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+      maxDieselDateISO = validDates.length ? validDates[validDates.length - 1] : '2026-11-03';
+
       populateDieselFilterDropdowns();
+      applyDieselFilters();
+    }
+
+    let maxDieselDateISO = '2026-11-03';
+
+    function applyDieselDatePreset(preset) {
+      const refISO = maxDieselDateISO || '2026-11-03';
+      const [ry, rm] = refISO.split('-').map(Number);
+      const fMes = document.getElementById('dfMes');
+      const fFrom = document.getElementById('dfDateFrom');
+      const fTo = document.getElementById('dfDateTo');
+      if (fMes) fMes.value = 'ALL';
+
+      if (preset === 'YTD') {
+        if (fFrom) fFrom.value = '';
+        if (fTo) fTo.value = '';
+      } else if (preset === 'TODAY') {
+        if (fFrom) fFrom.value = refISO;
+        if (fTo) fTo.value = refISO;
+      } else if (preset === 'YESTERDAY') {
+        const yest = addDaysISO(refISO, -1);
+        if (fFrom) fFrom.value = yest;
+        if (fTo) fTo.value = yest;
+      } else if (preset === 'LAST_7') {
+        if (fFrom) fFrom.value = addDaysISO(refISO, -6);
+        if (fTo) fTo.value = refISO;
+      } else if (preset === 'LAST_15') {
+        if (fFrom) fFrom.value = addDaysISO(refISO, -14);
+        if (fTo) fTo.value = refISO;
+      } else if (preset === 'LAST_30') {
+        if (fFrom) fFrom.value = addDaysISO(refISO, -29);
+        if (fTo) fTo.value = refISO;
+      } else if (preset === 'CUR_MONTH') {
+        const ym = `${ry}-${String(rm).padStart(2, '0')}`;
+        if (fMes && Array.from(fMes.options).some(o => o.value === ym)) fMes.value = ym;
+        if (fFrom) fFrom.value = `${ym}-01`;
+        if (fTo) fTo.value = lastDayOfMonthISO(ry, rm);
+      } else if (preset === 'PREV_MONTH') {
+        const pm = rm === 1 ? 12 : rm - 1;
+        const py = rm === 1 ? ry - 1 : ry;
+        const ym = `${py}-${String(pm).padStart(2, '0')}`;
+        if (fMes && Array.from(fMes.options).some(o => o.value === ym)) fMes.value = ym;
+        if (fFrom) fFrom.value = `${ym}-01`;
+        if (fTo) fTo.value = lastDayOfMonthISO(py, pm);
+      }
+
+      document.querySelectorAll('#dieselDatePresetPills .preset-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === preset);
+      });
+
+      applyDieselFilters();
+    }
+
+    function onDieselMonthDropdownChange() {
+      const mes = document.getElementById('dfMes')?.value || 'ALL';
+      const fFrom = document.getElementById('dfDateFrom');
+      const fTo = document.getElementById('dfDateTo');
+      if (mes === 'ALL') {
+        if (fFrom) fFrom.value = '';
+        if (fTo) fTo.value = '';
+        applyDieselDatePreset('YTD');
+      } else {
+        const [y, m] = mes.split('-').map(Number);
+        if (fFrom) fFrom.value = `${mes}-01`;
+        if (fTo) fTo.value = lastDayOfMonthISO(y, m);
+        document.querySelectorAll('#dieselDatePresetPills .preset-pill').forEach(btn => btn.classList.remove('active'));
+        applyDieselFilters();
+      }
+    }
+
+    function onDieselCustomDateChange() {
+      const fMes = document.getElementById('dfMes');
+      if (fMes) fMes.value = 'ALL';
+      document.querySelectorAll('#dieselDatePresetPills .preset-pill').forEach(btn => btn.classList.remove('active'));
       applyDieselFilters();
     }
 
@@ -7831,13 +7937,18 @@
     function applyDieselFilters() {
       const q = (document.getElementById('dfSearch')?.value || '').toLowerCase().trim();
       const mes = document.getElementById('dfMes')?.value || 'ALL';
+      const dFrom = document.getElementById('dfDateFrom')?.value || '';
+      const dTo = document.getElementById('dfDateTo')?.value || '';
       const comb = document.getElementById('dfCombustivel')?.value || 'ALL';
       const posto = document.getElementById('dfPosto')?.value || 'ALL';
       const emp = document.getElementById('dfEmpresa')?.value || 'ALL';
       const audit = document.getElementById('dfAuditoria')?.value || 'ALL';
 
       dieselFilteredRecords = dieselRawRecords.filter(r => {
-        if (mes !== 'ALL' && r.monthKey !== mes) return false;
+        if (dFrom && r.dateISO && r.dateISO < dFrom) return false;
+        if (dTo && r.dateISO && r.dateISO > dTo) return false;
+        if (!dFrom && !dTo && mes !== 'ALL' && r.monthKey !== mes) return false;
+
         if (comb !== 'ALL' && r.comb !== comb) return false;
         if (posto !== 'ALL' && r.posto !== posto) return false;
         if (emp !== 'ALL' && r.empresa !== emp) return false;
@@ -7860,6 +7971,25 @@
       dieselPlatesCurrentPage = 1;
       dieselDriversCurrentPage = 1;
 
+      const spanBadge = document.getElementById('dieselDateSpanBadge');
+      if (spanBadge) {
+        if (dFrom && dTo) {
+          if (dFrom === dTo) {
+            spanBadge.textContent = `Dia: ${fmtISOToBR(dFrom)}`;
+          } else {
+            spanBadge.textContent = `Período: ${fmtISOToBR(dFrom)} a ${fmtISOToBR(dTo)}`;
+          }
+        } else if (dFrom) {
+          spanBadge.textContent = `A partir de: ${fmtISOToBR(dFrom)}`;
+        } else if (dTo) {
+          spanBadge.textContent = `Até: ${fmtISOToBR(dTo)}`;
+        } else if (mes !== 'ALL') {
+          spanBadge.textContent = `Mês: ${mes}`;
+        } else {
+          spanBadge.textContent = `Período: Ano 2026 (YTD)`;
+        }
+      }
+
       const counterEl = document.getElementById('dieselFilterCounterText');
       if (counterEl) {
         const total = dieselRawRecords.length;
@@ -7877,7 +8007,7 @@
     }
 
     function resetDieselFilters() {
-      const ids = ['dfSearch', 'dfMes', 'dfCombustivel', 'dfPosto', 'dfEmpresa', 'dfAuditoria'];
+      const ids = ['dfSearch', 'dfCombustivel', 'dfPosto', 'dfEmpresa', 'dfAuditoria'];
       ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -7885,15 +8015,30 @@
           else el.value = '';
         }
       });
-      applyDieselFilters();
+      applyDieselDatePreset('YTD');
     }
 
     function renderDieselActiveChips() {
       const container = document.getElementById('dieselActiveChipsContainer');
       if (!container) return;
       const chips = [];
+
+      const dFrom = document.getElementById('dfDateFrom')?.value || '';
+      const dTo = document.getElementById('dfDateTo')?.value || '';
+      if (dFrom || dTo) {
+        if (dFrom && dTo && dFrom === dTo) {
+          chips.push(`<span class="chip" onclick="applyDieselDatePreset('YTD')">Dia: ${fmtISOToBR(dFrom)} ✕</span>`);
+        } else {
+          chips.push(`<span class="chip" onclick="applyDieselDatePreset('YTD')">Período: ${dFrom ? fmtISOToBR(dFrom) : 'Início'} a ${dTo ? fmtISOToBR(dTo) : 'Fim'} ✕</span>`);
+        }
+      } else {
+        const mesEl = document.getElementById('dfMes');
+        if (mesEl && mesEl.value !== 'ALL') {
+          chips.push(`<span class="chip" onclick="applyDieselDatePreset('YTD')">Mês: ${mesEl.value} ✕</span>`);
+        }
+      }
+
       const fields = [
-        { id: 'dfMes', label: 'Mês' },
         { id: 'dfCombustivel', label: 'Combustível' },
         { id: 'dfPosto', label: 'Posto' },
         { id: 'dfEmpresa', label: 'Empresa' },
