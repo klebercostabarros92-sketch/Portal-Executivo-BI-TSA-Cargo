@@ -1715,7 +1715,7 @@
     <div class="dq-alert-banner" id="dataQualityAlert">
       <div style="display:flex;align-items:center;gap:10px;">
         <i data-lucide="alert-triangle" style="width:18px;height:18px;color:#D97706;"></i>
-        <span id="dataQualityAlertText">Atenção: células truncadas detectadas na planilha.</span>
+        <span id="dataQualityAlertText">Aten��ão: células truncadas detectadas na planilha.</span>
       </div>
     </div>
 
@@ -1989,7 +1989,7 @@
           <div>
             <div class="chart-title">
               <i data-lucide="radar" style="width:18px;height:18px;color:var(--tsa-red);"></i>
-              Radar Estatístico de Pedidos Atípicos / Outliers (Z-Score ≥ 2,5σ)
+              Radar Estatístico de Pedidos Atípicos / Outliers (Z-Score ≥ 2,5��)
             </div>
             <div class="chart-subtitle">Detecção automática (Machine Learning / Estatística) de pedidos muito acima do padrão histórico da sua própria Conta Analítica</div>
           </div>
@@ -2571,11 +2571,11 @@
           <input type="text" id="pfSearch" class="filter-control" placeholder="Ex: UPS0E08, VE483, FH 540..." oninput="applyPatFilters()">
         </div>
         <div class="filter-group">
-          <label>Status de Alienaç��o</label>
+          <label>Status de Alienação</label>
           <select id="pfAlienado" class="filter-control" onchange="applyPatFilters()">
             <option value="ALL">Todos (Quitados + Alienados)</option>
             <option value="NÃO">🔓 NÃO Alienados (Quitados / Livres)</option>
-            <option value="SIM">🔒 SIM Alienados (Com Gravame/Restrição)</option>
+            <option value="SIM">��� SIM Alienados (Com Gravame/Restrição)</option>
           </select>
         </div>
         <div class="filter-group">
@@ -4637,7 +4637,7 @@
       document.getElementById('trendInsightsContainer').innerHTML = `
         <div class="insight-card">
           <h4><i data-lucide="flame" style="width:17px;height:17px;color:var(--tsa-red);"></i> Pico Sazonal OPEX: ${formatMonthLabel(peakMonth)} (${peakMonth ? fmtBRLCompact(mStats[peakMonth].opex) : 'R$ 0'})</h4>
-          <p>A média mensal de OPEX recorrente é de <strong>${fmtBRLCompact(avgMonthlyOpex)}/mês</strong>. O mês de maior pressão operacional foi <strong>${formatMonthLabel(peakMonth)}</strong> (${avgMonthlyOpex > 0 && peakMonth ? (((mStats[peakMonth].opex / avgMonthlyOpex) - 1) * 100).toFixed(1) : 0}% acima da média).</p>
+          <p>A média mensal de OPEX recorrente é de <strong>${fmtBRLCompact(avgMonthlyOpex)}/mês</strong>. O mês de maior press��o operacional foi <strong>${formatMonthLabel(peakMonth)}</strong> (${avgMonthlyOpex > 0 && peakMonth ? (((mStats[peakMonth].opex / avgMonthlyOpex) - 1) * 100).toFixed(1) : 0}% acima da média).</p>
         </div>
         <div class="insight-card blue">
           <h4><i data-lucide="trending-up" style="width:17px;height:17px;color:var(--blue);"></i> Ritmo Recente (${formatMonthLabel(lastM)} vs. ${prevM ? formatMonthLabel(prevM) : '-'})</h4>
@@ -5647,7 +5647,7 @@
           .withFailureHandler(err => {
             btn.classList.remove('loading');
             btn.querySelector('span').textContent = 'Atualizar Base Sheets';
-            showToast('Falha na comunicação com o servidor GAS: ' + err.message, 'error');
+            showToast('Falha na comunica��ão com o servidor GAS: ' + err.message, 'error');
           })
           .getSheetData();
         return;

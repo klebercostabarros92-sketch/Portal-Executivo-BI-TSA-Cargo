@@ -188,56 +188,162 @@ function getDieselSheetData(requestedSheetName) {
  * Pode ser executado manualmente ou configurado via acionador diário (ex: 04:00 da manhã).
  * O token da API deve ser salvo em Propriedades do Script (Chave: CTA_API_TOKEN).
  */
-function syncCtaSmartAbastecimentosDiarios() {
+/**
+ * Sincronizador Oficial com a Sync API da CTASmart (Porta 8443).
+ * Documentação Oficial E+Bros / CTASmart:
+ * Endpoint: https://www.ctasmart.com.br:8443/SvWebSincronizaAbastecimentos
+ * Permite buscar os abastecimentos recentes e avançar a fila com SvWebInformaSincronismoAbastecimentos.
+ * Pode ser chamado manualmente no portal ou executado via acionador diário/horário.
+ */
+function syncCtaSmartAbastecimentosDiarios(dInicioParam, dFimParam) {
   const token = PropertiesService.getScriptProperties().getProperty('CTA_API_TOKEN') || CTA_DEFAULT_TOKEN;
   if (!token) {
-    Logger.log('CTA_API_TOKEN não configurado nas Propriedades do Script.');
+    Logger.log('CTA_API_TOKEN não configurado.');
     return { ok: false, error: 'Token não configurado.' };
   }
+
   try {
     const hoje = new Date();
-    const ontem = new Date(hoje.getTime() - 24 * 60 * 60 * 1000);
-    const dStr = Utilities.formatDate(ontem, 'America/Sao_Paulo', 'yyyy-MM-dd');
-
-    const candidateUrls = [
-      'https://ctasmart.com.br/SincronizaAbastecimentos?token=' + token + '&data_inicio=' + dStr + '&data_fim=' + dStr + '&formato=json',
-      'https://api.ctasmart.com.br/v1/abastecimentos?data_inicio=' + dStr + '&data_fim=' + dStr
-    ];
-
-    let lastError = null;
-    for (let u = 0; u < candidateUrls.length; u++) {
-      try {
-        const response = UrlFetchApp.fetch(candidateUrls[u], {
-          method: 'get',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'Accept': 'application/json'
-          },
-          muteHttpExceptions: true
-        });
-
-        const statusCode = response.getResponseCode();
-        if (statusCode === 200) {
-          const txt = response.getContentText();
-          if (txt && (txt.trim().startsWith('{') || txt.trim().startsWith('['))) {
-            const data = JSON.parse(txt);
-            Logger.log('Abastecimentos recebidos da API CTA Smart: ' + (Array.isArray(data) ? data.length : 1));
-            return { ok: true, count: Array.isArray(data) ? data.length : 1, data: data };
-          }
-        }
-        lastError = 'HTTP ' + statusCode + ': ' + response.getContentText().slice(0, 200);
-      } catch (errLoop) {
-        lastError = errLoop.message;
-      }
+    const dHojeStr = Utilities.formatDate(hoje, 'America/Sao_Paulo', 'dd/MM/yyyy');
+    
+    // Se não informadas as datas, busca dos últimos 4 dias até hoje
+    let dInicio = dInicioParam;
+    let dFim = dFimParam || dHojeStr;
+    if (!dInicio) {
+      const tresDiasAtras = new Date(hoje.getTime() - 4 * 24 * 60 * 60 * 1000);
+      dInicio = Utilities.formatDate(tresDiasAtras, 'America/Sao_Paulo', 'dd/MM/yyyy');
     }
-    Logger.log('Tentativas de sincronização CTA Smart: ' + lastError);
-    return { ok: false, error: lastError };
+
+    const apiUrl = 'https://www.ctasmart.com.br:8443/SvWebSincronizaAbastecimentos?token=' + encodeURIComponent(token) +
+      '&data_inicio=' + encodeURIComponent(dInicio) +
+      '&data_fim=' + encodeURIComponent(dFim) +
+      '&formato=json&max_linhas=100';
+
+    Logger.log('Consultando CTA Smart Sync API: ' + apiUrl);
+
+    const response = UrlFetchApp.fetch(apiUrl, {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      muteHttpExceptions: true
+    });
+
+    const statusCode = response.getResponseCode();
+    if (statusCode !== 200) {
+      Logger.log('Erro HTTP CTA Smart: ' + statusCode + ' - ' + response.getContentText().slice(0, 300));
+      return { ok: false, status: statusCode, error: response.getContentText().slice(0, 300) };
+    }
+
+    const json = JSON.parse(response.getContentText());
+    const list = json && json.abastecimentos ? json.abastecimentos : [];
+    Logger.log('Abastecimentos retornados pela API: ' + list.length);
+
+    if (list.length === 0) {
+      return { ok: true, count: 0, message: 'Nenhum abastecimento novo retornado para o período.' };
+    }
+
+    // Abre a planilha Google Sheets de Diesel para anexar
+    const ss = SpreadsheetApp.openById(DIESEL_SPREADSHEET_ID);
+    const sheet = ss.getSheets()[0];
+    const lastRow = sheet.getLastRow();
+    
+    // Obtém chaves dos últimos 400 registros para evitar duplicidades
+    const existingKeys = new Set();
+    if (lastRow > 1) {
+      const startCheck = Math.max(2, lastRow - 400);
+      const numRows = lastRow - startCheck + 1;
+      const recentData = sheet.getRange(startCheck, 1, numRows, 14).getValues();
+      recentData.forEach(function(r) {
+        // Chave: dataInicio_placa_volume_odometro
+        const k = String(r[0] || '').trim() + '_' + String(r[3] || '').trim().toUpperCase() + '_' + String(r[11] || '').trim();
+        existingKeys.add(k);
+      });
+    }
+
+    const newRows = [];
+    const processedIds = [];
+
+    list.forEach(function(item) {
+      const dataInicio = (item.data_inicio && item.hora_inicio) ? (item.data_inicio + ' ' + item.hora_inicio) : (item.data_inicio || '');
+      const dataFim = (item.data_fim && item.hora_fim) ? (item.data_fim + ' ' + item.hora_fim) : (item.data_fim || dataInicio);
+      const placa = item.veiculo && item.veiculo.placa ? String(item.veiculo.placa).toUpperCase().trim() : '';
+      const volume = item.volume || item.volume_fixed || '';
+      
+      const key = dataInicio + '_' + placa + '_' + volume;
+      if (existingKeys.has(key)) {
+        // Já existe na planilha
+        return;
+      }
+      existingKeys.add(key);
+
+      const row = new Array(42).fill('');
+      row[0] = dataInicio;
+      row[1] = dataFim;
+      row[2] = (item.empresa && item.empresa.nome) ? item.empresa.nome : 'TSA CARGO';
+      row[3] = placa;
+      row[4] = (item.veiculo && item.veiculo.frota) ? item.veiculo.frota : '';
+      row[5] = (item.veiculo && item.veiculo.nome) ? item.veiculo.nome : '';
+      row[6] = ''; // Categoria
+      row[7] = ''; // Ano
+      row[8] = (item.veiculo && item.veiculo.nome) ? item.veiculo.nome : '';
+      row[9] = '';
+      row[10] = '';
+      row[11] = volume;
+      row[12] = item.custo || '';
+      row[13] = item.odometro || '';
+      row[14] = item.distancia || '';
+      row[15] = item.custo_unitario || '';
+      row[16] = item.media_kilometro_litro || '';
+      row[17] = item.horimetro || '';
+      row[18] = item.horas_trabalhadas || '';
+      row[19] = '';
+      row[20] = item.media_litro_hora || '';
+      row[21] = (item.empresa && item.empresa.cnpj) ? item.empresa.cnpj : '';
+      row[22] = item.chave_nfe || '';
+      row[23] = item.lote || '';
+      row[24] = item.posto && item.posto.posto_comercial ? item.posto.posto_comercial : '';
+      row[25] = item.bypass || '';
+      row[26] = item.completo || '';
+      row[27] = item.encerrante || item.encerrante_fixed || '';
+      row[28] = item.produto_categoria_id || '';
+      row[29] = item.combustivel && item.combustivel.descricao ? item.combustivel.descricao : 'S10';
+      row[30] = (item.motorista && item.motorista.cpf) ? item.motorista.cpf : '';
+      row[31] = '';
+      row[32] = (item.motorista && item.motorista.nome) ? item.motorista.nome : '';
+      row[33] = (item.posto && item.posto.nome) ? item.posto.nome : '';
+      row[34] = (item.posto && item.posto.uf) ? item.posto.uf : '';
+      row[35] = (item.posto && item.posto.cnpj) ? item.posto.cnpj : '';
+      row[36] = (item.tanque && item.tanque.nome) ? item.tanque.nome : '';
+      row[37] = (item.bomba && item.bomba.nome) ? item.bomba.nome : '';
+      row[38] = (item.extra1 && item.extra1.descricao) ? item.extra1.descricao : '';
+      row[39] = (item.extra2 && item.extra2.descricao) ? item.extra2.descricao : '';
+      row[40] = (item.extra3 && item.extra3.descricao) ? item.extra3.descricao : '';
+      row[41] = (item.extra4 && item.extra4.descricao) ? item.extra4.descricao : '';
+
+      newRows.push(row);
+      if (item.id) processedIds.push(item.id);
+    });
+
+    if (newRows.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 42).setValues(newRows);
+      Logger.log('Gravadas com sucesso ' + newRows.length + ' novas linhas na planilha do Diesel.');
+    }
+
+    return {
+      ok: true,
+      totalFromApi: list.length,
+      newAppended: newRows.length,
+      periodo: dInicio + ' a ' + dFim,
+      updatedAt: Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss')
+    };
+
   } catch (err) {
     Logger.log('Exceção ao sincronizar CTA Smart: ' + err.message);
     return { ok: false, error: err.message };
   }
 }
-
 /**
  * Persists the updated FIPE values (Official FIPE + Forklift Depreciation Rule)
  * directly into Column Y ('Fipe') and Column V ('Idade') of the Patrimônio Frota Google Sheet.
