@@ -607,19 +607,6 @@ const DRIVE_AET_FOLDER_ID = '16NnsTxTEA9sAll4Z8wFnzUh4uxDgA0R8';
 
 function getAetDriveLicenses(forceRescan) {
   try {
-    const cache = PropertiesService.getScriptProperties();
-    if (!forceRescan) {
-      const cached = cache.getProperty('AET_DATA_CACHE');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed && parsed.aets && parsed.aets.length > 0) {
-            return parsed;
-          }
-        } catch(e) {}
-      }
-    }
-
     const rootFolder = DriveApp.getFolderById(DRIVE_AET_FOLDER_ID);
     const subfolders = rootFolder.getFolders();
     const allAets = [];
@@ -671,10 +658,7 @@ function getAetDriveLicenses(forceRescan) {
       aets: allAets
     };
 
-    try {
-      cache.setProperty('AET_DATA_CACHE', JSON.stringify(payload));
-    } catch(e) {}
-
+    // Payload com mais de 250 AETs ultrapassa o limite de 9KB do PropertiesService, então retornamos direto
     return payload;
   } catch (err) {
     return {
