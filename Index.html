@@ -2137,7 +2137,7 @@
           <div>
             <div class="chart-title">
               <i data-lucide="calendar-check-2" style="width:18px;height:18px;color:var(--tsa-green);"></i>
-              Evolução Mensal da Oficina: Preventiva vs. Corretiva, Pneus & Avarias
+              Evolu��ão Mensal da Oficina: Preventiva vs. Corretiva, Pneus & Avarias
             </div>
             <div class="chart-subtitle">Acompanhamento mês a mês do equilíbrio entre manutenção programada e quebras corretivas</div>
           </div>
@@ -2877,7 +2877,7 @@
               <div>
                 <div class="chart-title">
                   <i data-lucide="clock" style="width:18px;height:18px;color:var(--amber);"></i>
-                  Idade Média Cronológica vs. Ponderada pelo Valor por Negócio
+                  Idade Média Cronológica vs. Ponderada pelo Valor por Neg��cio
                 </div>
                 <div class="chart-subtitle">Identifica quais operações possuem a frota mais jovem e moderna (ex: Farma 4,2 anos)</div>
               </div>
@@ -8773,22 +8773,35 @@
     function ingestDieselPayload(payload) {
       if (!payload || !payload.rows) return;
       dieselRawRecords = payload.rows.map((r, idx) => {
-        const dStr = String(r[0] || '').trim(); // 02/01/2026
-        const hStr = String(r[1] || '').trim(); // 09:02
+        const isWide = r.length >= 25; // 42-column format from Google Sheets
+
+        let dStr = '';
+        let hStr = '';
+        const dtField = String(r[0] || '').trim();
+        if (dtField.includes(' ')) {
+          const parts = dtField.split(' ');
+          dStr = parts[0];
+          hStr = parts[1] || '';
+        } else {
+          dStr = dtField;
+          hStr = isWide ? '' : String(r[1] || '').trim();
+        }
+
         const empresa = String(r[2] || 'TSA CARGO').trim();
         const placa = String(r[3] || 'SEM PLACA').trim().toUpperCase();
         const frota = String(r[4] || '-').trim();
-        const modelo = String(r[5] || '').trim();
+        const modelo = isWide ? String(r[8] || r[5] || '').trim() : String(r[5] || '').trim();
         const categoria = String(r[6] || 'OUTROS').trim();
-        const vol = parseBrazilianNumber(r[7]);
-        const custo = parseBrazilianNumber(r[8]);
-        const odo = parseOdometer(r[9]);
-        const dist = parseBrazilianNumber(r[10]);
-        const kmL = parseBrazilianNumber(r[11]);
-        const posto = String(r[12] || 'NÃO INFORMADO').trim();
-        const comb = String(r[13] || 'S10').trim();
-        const frentista = String(r[14] || '').trim();
-        const motorista = String(r[15] || 'NÃO IDENTIFICADO').trim();
+
+        const vol = parseBrazilianNumber(isWide ? r[11] : r[7]);
+        const custo = parseBrazilianNumber(isWide ? r[12] : r[8]);
+        const odo = parseOdometer(isWide ? r[13] : r[9]);
+        const dist = parseBrazilianNumber(isWide ? r[14] : r[10]);
+        const kmL = parseBrazilianNumber(isWide ? r[16] : r[11]);
+        const posto = isWide ? String(r[21] || 'NÃO INFORMADO').trim() : String(r[12] || 'NÃO INFORMADO').trim();
+        const comb = isWide ? String(r[27] || 'S10').trim() : String(r[13] || 'S10').trim();
+        const frentista = isWide ? String(r[28] || '').trim() : String(r[14] || '').trim();
+        const motorista = isWide ? String(r[30] || 'NÃO IDENTIFICADO').trim() : String(r[15] || 'NÃO IDENTIFICADO').trim();
 
         // Month key: 2026-01
         let monthKey = '';
