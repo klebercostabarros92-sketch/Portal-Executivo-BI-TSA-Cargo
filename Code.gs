@@ -231,12 +231,12 @@ function syncCtaSmartAbastecimentosDiarios(dInicioParam, dFimParam) {
     const hoje = new Date();
     const dHojeStr = Utilities.formatDate(hoje, 'America/Sao_Paulo', 'dd/MM/yyyy');
     
-    // Se não informadas as datas, busca dos últimos 5 dias até hoje
+    // Se não informadas as datas, busca de ontem até hoje para garantir que caiba no limite de 100 registros por chamada da API
     let dInicio = dInicioParam;
     let dFim = dFimParam || dHojeStr;
     if (!dInicio) {
-      const cincoDiasAtras = new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000);
-      dInicio = Utilities.formatDate(cincoDiasAtras, 'America/Sao_Paulo', 'dd/MM/yyyy');
+      const ontem = new Date(hoje.getTime() - 24 * 60 * 60 * 1000);
+      dInicio = Utilities.formatDate(ontem, 'America/Sao_Paulo', 'dd/MM/yyyy');
     }
 
     // Carrega dicionário de enriquecimento a partir do Patrimônio Frota (Placa -> Frota, Modelo, Categoria)
@@ -296,6 +296,13 @@ function syncCtaSmartAbastecimentosDiarios(dInicioParam, dFimParam) {
       }
 
       const json = JSON.parse(response.getContentText());
+      if (json && json.status && json.status.codigo === '017') {
+        Logger.log('CTA Smart Rate Limit: ' + json.status.mensagem);
+        if (allFetched.length === 0) {
+          return { ok: false, error: 'Aguarde 60 segundos antes de solicitar nova sincronização CTA Smart.' };
+        }
+        break;
+      }
       const list = json && json.abastecimentos ? json.abastecimentos : [];
       Logger.log('Página ' + page + ' retornou ' + list.length + ' abastecimentos.');
 
@@ -505,7 +512,7 @@ function installAutoSyncTrigger() {
 function syncCtaSmartJob() {
   const hoje = new Date();
   const dFim = Utilities.formatDate(hoje, 'America/Sao_Paulo', 'dd/MM/yyyy');
-  const dInicio = Utilities.formatDate(new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000), 'America/Sao_Paulo', 'dd/MM/yyyy');
+  const dInicio = Utilities.formatDate(new Date(hoje.getTime() - 24 * 60 * 60 * 1000), 'America/Sao_Paulo', 'dd/MM/yyyy');
   return syncCtaSmartAbastecimentosDiarios(dInicio, dFim);
 }
 
